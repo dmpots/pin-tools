@@ -1,0 +1,50 @@
+##############################################################
+#
+# Here are some things you might want to configure
+#
+##############################################################
+
+TARGET_COMPILER?=gnu
+
+##############################################################
+#
+# include *.config files
+#
+##############################################################
+
+ifeq ($(TARGET_COMPILER),gnu)
+    include ../makefile.gnu.config
+    CXXFLAGS ?= -I$(PIN_HOME)/InstLib -fomit-frame-pointer -Wall -Werror -Wno-unknown-pragmas $(DBG) $(OPT) -MMD
+endif
+
+##############################################################
+#
+# Tools sets
+#
+##############################################################
+
+TOOL_ROOTS = trace
+
+TOOLS = $(TOOL_ROOTS:%=$(OBJDIR)%$(PINTOOL_SUFFIX))
+
+all: tools
+tools: $(OBJDIR) $(TOOLS)
+
+## build rules
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
+$(OBJDIR)%.o : %.cpp
+	${CXX} ${COPT} $(CXXFLAGS) ${PIN_CXXFLAGS} ${OUTOPT}$@ $< 
+
+$(TOOLS): $(PIN_LIBNAMES)
+$(TOOLS): $(OBJDIR)%$(PINTOOL_SUFFIX) : $(OBJDIR)%.o
+	${PIN_LD} ${PIN_LDFLAGS} $(LINK_DEBUG) ${LINK_OUT}$@ $< ${PIN_LPATHS} ${PIN_LIBS} $(DBG)
+
+## cleaning
+clean:
+	-rm -rf $(OBJDIR) *.out *.tested *.failed *.d *makefile.copy *.exp *.lib
+
+-include *.d
+
