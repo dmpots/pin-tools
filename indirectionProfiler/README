@@ -1,0 +1,26 @@
+The purpose of this program is to profile the dynamic targets of
+indirect control flow in a program.  We are mostly looking for
+patterns in indirect call targets, but indirect jump targets may be
+interesting as well (for example, the plt contains many indirect jumps
+that are highly predictable).  While the hardware predictor will
+probably correctly predict targets that are frequently the same, there
+is still probably opportunity for inlining and customizing the routine
+for its callsite.  These opportunities represent opaque procedure
+calls to the static compiler, so it cannot make any
+optimizations/assumptions.  But, if we can predict the target at
+optimization time, then would could do "guarded inlining" to
+conditionally customize the routine for that callsite (when that
+routine is the target of the indirection).
+
+To accomplish the indirection profiling, we will examine each
+branch/call operation and instrument those with a target that cannot
+be determined statically.  The instrumentation routine will then be
+called each time the indirect branch/call is executed; the
+instrumentation routine will simply examine the processor context to
+determine the target address.  The results will be logged for
+post-execution analysis.
+
+The results of profiling the indirect targets on a set of interesting
+benchmarks or applications should make an interesting tech report.  It
+should provide insight into the profitability of runtime optimizations
+that exploit runtime "binding" information that is unknown statically.
