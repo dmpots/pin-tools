@@ -5,6 +5,7 @@
 ##############################################################
 
 TARGET_COMPILER?=gnu
+PIN_SRC_TOOLS_ROOT=..
 
 ##############################################################
 #
@@ -13,7 +14,7 @@ TARGET_COMPILER?=gnu
 ##############################################################
 
 ifeq ($(TARGET_COMPILER),gnu)
-    include ../makefile.gnu.config
+    include $(PIN_SRC_TOOLS_ROOT)/makefile.gnu.config
     CXXFLAGS ?= -I$(PIN_HOME)/InstLib -fomit-frame-pointer -Wall -Werror -Wno-unknown-pragmas $(DBG) $(OPT) -MMD
 endif
 
@@ -23,7 +24,7 @@ endif
 #
 ##############################################################
 
-TOOL_ROOTS = trace
+TOOL_ROOTS = addr-trace
 
 TOOLS = $(TOOL_ROOTS:%=$(OBJDIR)%$(PINTOOL_SUFFIX))
 
