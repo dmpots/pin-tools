@@ -112,3 +112,5 @@ TAGS/
 *.beam
 
 #pin-tools
+obj-ia32/
+obj-intel64/

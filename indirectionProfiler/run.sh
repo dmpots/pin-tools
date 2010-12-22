@@ -1,8 +1,11 @@
 #!/bin/bash
+PIN=../../../../pin
+OBJDIR=obj-ia32
 
-pin -t obj-intel64/indirectionProfiler.so -- ./test &
+$PIN -t $OBJDIR/indirectionProfiler.so -- ./test.haskell &
 PID=$!
-ln -fs $!.CallProfile.sql out.sql
-ln -fs $!.CallProfile.log CallProfile.log
-ln -fs $!.AddressMap.log AddressMap.log
 wait
+#ln -f $!.CallProfile.sql out.sql
+cp -f $PID.CallProfile.log CallProfile.log
+cp -f $PID.AddressMap.log AddressMap.log
+./addressMapReader AddressMap.log CallProfile.log > AnnotatedCallProfile.log

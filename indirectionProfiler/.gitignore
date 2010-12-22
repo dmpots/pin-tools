@@ -1,0 +1,6 @@
+*.log
+*.sql
+addressMapReader
+indirectionAnalyzer
+test.haskell
+nm.out
