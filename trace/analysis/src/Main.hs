@@ -1,15 +1,17 @@
 module Main where
 
+import qualified Data.IntervalMap.FingerTree as Map
 import Data.List
-import qualified Data.IntMap as Map
+import Data.Maybe
+import Data.Word
 import System.Environment
 import System.Exit
 import System.Process
 import Numeric
 
-type Address = Int
+type Address = Word
 type Label   = String
-type Symtab  = Map.IntMap Label
+type Symtab  = Map.IntervalMap Address Label
 
 main = do
   [trace, nmFile] <- parseArgs
@@ -27,24 +29,30 @@ processLine symtab line =
 lookupAddr :: String -> Symtab -> Maybe Label
 lookupAddr a symtab = do
   addr <- tryReadHex a
-  Map.lookup addr symtab
+  listToMaybe $ map snd (Map.search addr symtab)
 
 createNameMap :: FilePath -> IO Symtab
 createNameMap nmFile = do
-  --nmOut <- readProcess "nm" ["-n", exe] ""
   nmOut <- readFile nmFile
-  return $ makeMap nmOut
+  let (m, sym, addrLow) = makeMap nmOut
+      m'  = Map.insert (Map.point addrLow) sym m
+      m'' = Map.insert (Map.Interval (addrLow + 1) maxBound) "ABOVE" m'
+  return m''
   where
-    makeMap :: String -> Symtab
+    makeMap :: String -> (Symtab, Label, Address)
     makeMap out =
-      foldl' (\m line -> case words line of
-                            [a,t,l] -> 
-                              maybe m (\a -> Map.insert a l m) (tryReadHex a)
-                            _       -> m) 
-      Map.empty 
+      foldl' (\prev@(m,sym,addrLow) line -> 
+                case words line of
+                  [a,t,l] -> maybe prev (add addrLow sym m l)(tryReadHex a)
+                  _       -> prev)
+      (Map.empty, "BELOW", 0)
       (lines out)
+      where
+        add aL nL iMap nH aH
+          | aL `seq` aH `seq` nL `seq` nH `seq` False = undefined
+          | otherwise = (Map.insert (Map.Interval aL aH) nL iMap, nH, aH)
 
-tryReadHex :: String -> Maybe Int
+tryReadHex :: String -> Maybe Address
 tryReadHex a = case readHex (drop0x a) of 
                   [(addr,[])] -> Just addr
                   _ -> Nothing
@@ -57,5 +65,5 @@ parseArgs = do
   args <- getArgs
   case args of
     [t,e] -> return args
-    _     -> putStrLn "usage: label-trace <trace> <exe>" >> exitFailure
+    _     -> putStrLn "usage: label-trace <trace.out> <nm.out>" >> exitFailure
   

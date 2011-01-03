@@ -55,6 +55,7 @@ Executable label-trace
   Build-depends:       base == 4.*
                      , process
                      , containers
+                     , fingertree == 0.0.1.*
   
   -- Modules not exported by this package.
   -- Other-modules:       
