@@ -114,3 +114,7 @@ TAGS/
 #pin-tools
 obj-ia32/
 obj-intel64/
+dist/
+*.log
+*.out
+*.out.*
