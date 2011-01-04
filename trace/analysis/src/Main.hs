@@ -36,7 +36,7 @@ createNameMap nmFile = do
   nmOut <- readFile nmFile
   let (m, sym, addrLow) = makeMap nmOut
       m'  = Map.insert (Map.point addrLow) sym m
-      m'' = Map.insert (Map.Interval (addrLow + 1) maxBound) "ABOVE" m'
+      m'' = Map.insert (Map.Interval (addrLow + 1) maxBound) extern m'
   return m''
   where
     makeMap :: String -> (Symtab, Label, Address)
@@ -45,7 +45,7 @@ createNameMap nmFile = do
                 case words line of
                   [a,t,l] -> maybe prev (add addrLow sym m l)(tryReadHex a)
                   _       -> prev)
-      (Map.empty, "BELOW", 0)
+      (Map.empty, extern, 0)
       (lines out)
       where
         add aL nL iMap nH aH
@@ -67,3 +67,5 @@ parseArgs = do
     [t,e] -> return args
     _     -> putStrLn "usage: label-trace <trace.out> <nm.out>" >> exitFailure
   
+extern :: String
+extern = "<EXTERN>" -- label for external (not in exe) addresses
