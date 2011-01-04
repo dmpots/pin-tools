@@ -11,5 +11,5 @@ pintool: trace.cpp
 	make -f Makefile.pin
 
 clean:
-	rm -f test Test.hi Test.o
+	rm -f test Test.hi Test.o *.log *.out *.out.*
 	make -f Makefile.pin clean
