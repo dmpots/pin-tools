@@ -312,7 +312,8 @@ ostream &operator << (ostream &o, symbols &s)
   if (s.non_terminal())
      o << s.rule()->index();
   else if (numbers & do_uncompress) o << s.value() << endl;
-  else if (numbers) o << '&' << s.value();
+  //else if (numbers) o << '&' << s.value();
+  else if (numbers) o << "0x" << hex << s.value() << dec;
   else if (do_uncompress) o << char(s.value());
   else if (s.value() == '\n') o << "\\n";
   else if (s.value() == '\t') o << "\\t";

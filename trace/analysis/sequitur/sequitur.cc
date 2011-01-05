@@ -170,9 +170,9 @@ int main(int argc, char **argv)
   // read first character and put it in the grammar
   //
 
-  int i;
+  unsigned int i;
 
-  if (numbers) cin >> i;
+  if (numbers) cin >> hex >> i;
   else i = cin.get();
   min_terminal = max_terminal = i;
 
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
 #endif
 
     // read a character, if on end of input exit loop
-    if (numbers) cin >> i;
+    if (numbers) {cin >> hex >> i; /*cout << hex << i << endl; */}
     else i = cin.get();
     if (cin.eof()) break;
 
