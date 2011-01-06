@@ -2,12 +2,12 @@ GHC=ghc
 
 .PHONEY: all clean pintool
 
-all: pintool test
+all: pintool testprog
 
-test: Test.hs
-	$(GHC) -fforce-recomp $< -o $@
+testprog:
+	$(GHC) $(HFLAGS) Test.hs -o test
 
-pintool: trace.cpp
+pintool:
 	make -f Makefile.pin
 
 clean:
