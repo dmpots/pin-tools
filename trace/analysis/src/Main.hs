@@ -6,6 +6,7 @@ import Data.Maybe
 import Data.Word
 import System.Environment
 import System.Exit
+import System.IO
 import System.Process
 import Numeric
 
@@ -14,17 +15,20 @@ type Label   = String
 type Symtab  = Map.IntervalMap Address Label
 
 main = do
-  [trace, nmFile] <- parseArgs
-  symtab      <- createNameMap nmFile
-  t <- readFile trace
-  mapM_ (\l -> putStrLn (processLine symtab l)) $ lines t
+  [nmFile] <- parseArgs
+  symtab   <- createNameMap nmFile
+  trace    <- hGetContents stdin
+  mapM_ (\l -> putStrLn (processLine symtab l)) $ lines trace
 
 processLine :: Symtab -> String -> String
 processLine symtab line@('#':_) = line
 processLine symtab line =
-  case lookupAddr line symtab of
-    Just label -> label
-    Nothing    -> line
+  case words line of
+    [addr]                    -> unwords [addr, label addr]
+    [addr,jumpKind,imageName] -> unwords [addr, label addr,jumpKind,imageName]
+
+  where
+    label addr = maybe "<EXTERN>" id (lookupAddr addr symtab)
 
 lookupAddr :: String -> Symtab -> Maybe Label
 lookupAddr a symtab = do
@@ -34,23 +38,18 @@ lookupAddr a symtab = do
 createNameMap :: FilePath -> IO Symtab
 createNameMap nmFile = do
   nmOut <- readFile nmFile
-  let (m, sym, addrLow) = makeMap nmOut
-      m'  = Map.insert (Map.point addrLow) sym m
-      m'' = Map.insert (Map.Interval (addrLow + 1) maxBound) extern m'
-  return m''
+  return $ foldl' add Map.empty (lines nmOut)
   where
-    makeMap :: String -> (Symtab, Label, Address)
-    makeMap out =
-      foldl' (\prev@(m,sym,addrLow) line -> 
-                case words line of
-                  [a,t,l] -> maybe prev (add addrLow sym m l)(tryReadHex a)
-                  _       -> prev)
-      (Map.empty, extern, 0)
-      (lines out)
-      where
-        add aL nL iMap nH aH
-          | aL `seq` aH `seq` nL `seq` nH `seq` False = undefined
-          | otherwise = (Map.insert (Map.Interval aL aH) nL iMap, nH, aH)
+    add m line =
+      case words line of
+        [symbol, aL, aH] -> maybe m id (insert aL aH symbol m)
+        _                -> m
+    insert aL aH symbol m
+      | aL `seq` aH `seq` symbol `seq` False = Nothing
+      | otherwise =  do
+          l <- tryReadHex aL
+          h <- tryReadHex aH
+          Just $ Map.insert (Map.Interval l h) symbol m
 
 tryReadHex :: String -> Maybe Address
 tryReadHex a = case readHex (drop0x a) of 
@@ -64,8 +63,5 @@ parseArgs :: IO [String]
 parseArgs = do
   args <- getArgs
   case args of
-    [t,e] -> return args
-    _     -> putStrLn "usage: label-trace <trace.out> <nm.out>" >> exitFailure
-  
-extern :: String
-extern = "<EXTERN>" -- label for external (not in exe) addresses
+    [_] -> return args
+    _  -> putStrLn "usage: label-trace <exe.symtab>" >> exitFailure

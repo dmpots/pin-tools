@@ -118,3 +118,4 @@ dist/
 *.log
 *.out
 *.out.*
+*.symtab
