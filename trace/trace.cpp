@@ -103,14 +103,16 @@ enum BranchKind {
   ICALL,
   DJUMP,
   IJUMP,
+  RET,
 }
 BranchKind;
 const char *BranchKindName(BranchKind kind) {
   switch(kind){
-    case DCALL: return "DCALL";
-    case ICALL: return "ICALL";
-    case DJUMP: return "DJUMP";
-    case IJUMP: return "IJUMP";
+    case DCALL: return "DCALL  ";
+    case ICALL: return "ICALL  ";
+    case DJUMP: return "DJUMP  ";
+    case IJUMP: return "IJUMP  ";
+    case RET:   return "RET    ";
     default:    return "UNKNOWN";
   }
 }
@@ -247,8 +249,9 @@ VOID Trace(TRACE trace, VOID *v)
             dstImgName = lookupImageName(dstAddr);
           }
           else if(INS_IsIndirectBranchOrCall(ins)) {
-            if(INS_IsBranch(ins)) { kind = IJUMP; }
-            else                  { kind = ICALL; }
+            if     (INS_IsBranch(ins))  { kind = IJUMP; }
+            else if(INS_IsRet(ins))     { kind = RET;   }
+            else                        { kind = ICALL; }
           }
 
           INS_InsertFillBuffer(ins, IPOINT_BEFORE, bufTypeId,
