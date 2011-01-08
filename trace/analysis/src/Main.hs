@@ -8,6 +8,7 @@ import System.Environment
 import System.Exit
 import System.IO
 import System.Process
+import Text.Printf
 import Numeric
 
 type Address = Word
@@ -24,9 +25,10 @@ processLine :: Symtab -> String -> String
 processLine symtab line@('#':_) = line
 processLine symtab line =
   case words line of
-    [addr]                    -> unwords [addr, label addr]
-    [addr,jumpKind,imageName] -> unwords [addr, label addr,jumpKind,imageName]
-
+    [addr]                    ->
+      printf "%-10s %s" addr (label addr)
+    [addr,jumpKind,imageName] ->
+      printf "%-10s %-15s %-7s %s" addr (label addr) jumpKind imageName
   where
     label addr = maybe "<EXTERN>" id (lookupAddr addr symtab)
 
