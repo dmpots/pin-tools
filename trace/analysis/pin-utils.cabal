@@ -68,4 +68,5 @@ Executable fawk
   Build-depends:       base == 4.*
                      , containers
                      , regex-posix
+                     , bytestring == 0.9.1.*
   

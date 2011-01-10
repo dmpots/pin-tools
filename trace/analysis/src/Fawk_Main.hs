@@ -3,12 +3,16 @@ module Main where
 
 import Control.Monad
 import Data.Char
+import Data.ByteString.Lazy.Char8(ByteString)
+import qualified Data.ByteString.Lazy.Char8 as B
 import Data.Either
 import System.IO
 import System.Environment
 import System.Exit
 import Text.Regex.Posix
-import Text.Regex.Posix.String
+--import Text.Regex.Posix.String
+import qualified Text.Regex.Posix.String as SR
+import Text.Regex.Posix.ByteString.Lazy
 
 --------------------------------------------------------------------------
 -- Types
@@ -16,7 +20,7 @@ import Text.Regex.Posix.String
 data Rule = Rule {
     column :: ColumnSpec, 
     regex :: Regex, 
-    replacement :: String,
+    replacement :: ByteString,
     regexStr :: String
   }
 instance Show Rule where
@@ -47,7 +51,7 @@ ruleRegex =
 parseScript :: FilePath -> IO (Either [ParseError] Script)
 parseScript inputFile = do
   input   <- readFile inputFile
-  mbRegex <- compile defaultCompOpt defaultExecOpt ruleRegex
+  mbRegex <- SR.compile defaultCompOpt defaultExecOpt ruleRegex
   case mbRegex of
     Left (_, msg) -> return $ Left [(ParseError 0 msg)]
     Right ruleParser -> do
@@ -63,7 +67,7 @@ parseScript inputFile = do
 -- one rule for each column specified
 parseLine :: Regex -> (String, Int) -> IO (Either ParseError Rule)
 parseLine ruleParser (line, lineNo)  = do
-  mbMatch <- regexec ruleParser line
+  mbMatch <- SR.regexec ruleParser line
   case mbMatch of
     Left (_,err) -> return $ makeError ("Regex error: "++err)
     Right (Just (_,_,_,[cols,_,regexp,replace])) -> makeRule cols regexp replace
@@ -77,11 +81,11 @@ parseLine ruleParser (line, lineNo)  = do
         matchSpec <- mkRegex regexp
         case matchSpec of 
           Nothing -> return $ makeError "Unable to parse regex"
-          Just re -> return $ Right $ Rule cs re replace regexp
+          Just re -> return $ Right $ Rule cs re (B.pack replace) regexp
     where colSpec   = parseCols cols
   makeError err = Left (ParseError lineNo err)
   mkRegex str = do 
-    regexp <- compile defaultCompOpt defaultExecOpt str
+    regexp <- compile defaultCompOpt defaultExecOpt (B.pack str)
     case regexp of
       Left _  -> return Nothing
       Right r -> return (Just r)
@@ -105,24 +109,27 @@ tryReadInt a = case reads a of [(i,[])] -> Just i; _ -> Nothing
 --------------------------------------------------------------------------
 runScript :: Script -> Handle -> Handle -> IO ()
 runScript script inh outh = do
-  input <- lines `liftM` hGetContents inh
-  mapM_ (\l -> processLine script l >>= hPutStrLn outh) input
+  input <- B.lines `liftM` B.hGetContents inh
+  mapM_ (\l -> processLine script l >>= output >> output endl) input
+  where 
+  output s = B.hPut outh s
+  endl     = B.pack "\n"
 
-processLine :: Script -> String -> IO String
+processLine :: Script -> ByteString -> IO ByteString
 processLine script line = do
   processed <- mapM (processField script) fields
-  return $ unwords processed
+  return $ B.unwords processed
   where
-  fields = zip (words line) [1..]
+  fields = zip (B.words line) [1..]
 
-processField :: Script -> (String, Int) -> IO String
+processField :: Script -> (ByteString, Int) -> IO ByteString
 processField script f@(field, _col) = do
   mbRule <- findFirst script f
   case mbRule of
     Nothing -> return field
-    Just (r, groups) -> return $ substitute groups (replacement r)
+    Just (r, groups) -> return $ subs groups (replacement r)
 
-findFirst :: Script -> (String, Int) -> IO (Maybe (Rule, [String]))
+findFirst :: Script -> (ByteString, Int) -> IO (Maybe (Rule, [ByteString]))
 findFirst []     _ = return Nothing
 findFirst (r:rs) f@(s, col) 
   | not ((column r) `spansColumn` col) = findFirst rs f
@@ -147,7 +154,22 @@ substitute groups string = go string
   safeIndex []     _   = ""
   safeIndex (x:_)  0   = x
   safeIndex (_:xs) !n  = safeIndex xs (n-1)
+
+subs :: [B.ByteString] -> B.ByteString -> B.ByteString
+subs groups rhs = B.concat (go rhs)
+  where
+  go str | B.null str = []
+  go str = let (b,a) = B.break (=='$') str
+               (new,rest) = sub a
+           in  b : new : go rest
+  sub s 
+    | B.length s >= 2 && isDigit (B.index s 1) = 
+      (groups `safeIndex` (digitToInt (B.index s 1) - 1), B.drop 2 s)
+    | otherwise = (B.empty, s)
  
+  safeIndex []     _   = B.empty
+  safeIndex (x:_)  0   = x
+  safeIndex (_:xs) !n  = safeIndex xs (n-1)
 --------------------------------------------------------------------------
 -- Main
 --------------------------------------------------------------------------
