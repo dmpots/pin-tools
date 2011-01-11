@@ -146,13 +146,19 @@ substitute :: [B.ByteString] -> B.ByteString -> B.ByteString
 substitute groups rhs = B.concat (go rhs)
   where
   go str | B.null str = []
-  go str = let (b,a) = B.break (=='$') str
+  go str = let (b,a) = B.break (=='\\') str
                (new,rest) = sub a
            in  b : new : go rest
   sub s 
-    | B.length s >= 2 && isDigit (B.index s 1) = 
-      (groups `safeIndex` (digitToInt (B.index s 1) - 1), B.drop 2 s)
-    | otherwise = (B.empty, s)
+    | B.length s >= 2 =
+        if isDigit groupNum then
+          (subGroupText, remaining)
+        else
+          (B.take 2 s, remaining)
+    | otherwise = (s, B.empty)
+      where groupNum     = B.index s 1
+            subGroupText = groups `safeIndex` (digitToInt groupNum - 1)
+            remaining    = B.drop 2 s
  
   safeIndex []     _   = B.empty
   safeIndex (x:_)  0   = x
