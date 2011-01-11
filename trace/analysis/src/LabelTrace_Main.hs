@@ -7,7 +7,6 @@ import Data.Word
 import System.Environment
 import System.Exit
 import System.IO
-import System.Process
 import Text.Printf
 import Numeric
 
@@ -15,6 +14,7 @@ type Address = Word
 type Label   = String
 type Symtab  = Map.IntervalMap Address Label
 
+main :: IO ()
 main = do
   [nmFile] <- parseArgs
   symtab   <- createNameMap nmFile
@@ -22,13 +22,13 @@ main = do
   mapM_ (\l -> putStrLn (processLine symtab l)) $ lines trace
 
 processLine :: Symtab -> String -> String
-processLine symtab line@('#':_) = line
-processLine symtab line =
+processLine  symtab line =
   case words line of
     [addr]                    ->
       printf "%-10s %s" addr (label addr)
     [addr,jumpKind,imageName] ->
       printf "%-10s %-15s %-7s %s" addr (label addr) jumpKind imageName
+    _ -> line
   where
     label addr = maybe "<EXTERN>" id (lookupAddr addr symtab)
 
@@ -44,9 +44,9 @@ createNameMap nmFile = do
   where
     add m line =
       case words line of
-        [symbol, aL, aH] -> maybe m id (insert aL aH symbol m)
+        [symbol, aL, aH] -> maybe m id (insertSym aL aH symbol m)
         _                -> m
-    insert aL aH symbol m
+    insertSym aL aH symbol m
       | aL `seq` aH `seq` symbol `seq` False = Nothing
       | otherwise =  do
           l <- tryReadHex aL
@@ -58,8 +58,8 @@ tryReadHex a = case readHex (drop0x a) of
                   [(addr,[])] -> Just addr
                   _ -> Nothing
   where
-    drop0x ('0':'x':a) = a
-    drop0x          a  = a
+    drop0x ('0':'x':addr) = addr
+    drop0x          addr  = addr
 
 parseArgs :: IO [String]
 parseArgs = do
