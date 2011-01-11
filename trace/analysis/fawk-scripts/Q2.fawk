@@ -1,5 +1,6 @@
 # Haskell Labels
 * /libHSrts/                         {rts}
+* /libHSbase/                        {base}
 * /^libHS.*/                         {hs}
 * /^test$/                           {exe}
 
