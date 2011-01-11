@@ -1,0 +1,7 @@
+# Haskell Labels
+* /libHSrts/                         {rts}
+* /^libHS.*/                         {hs}
+* /^test$/                           {exe}
+
+# default is to label as non-haskell code
+* /.*/                                {_}

@@ -1,0 +1,8 @@
+# Haskell Labels
+* /libHSrts/                         {rts}
+* /^(libHS[^[:digit:]]*)-([[:digit:]]|[.]|-)*ghc(([[:digit:]]|[.])*)[.]so.*$/ {\1}
+* /^test$/                           {exe}
+
+# default is to label as non-haskell code
+* /<UNKNOWN>/                           {_}
+* /.*[.]so([.]|[[:digit:]])*$/          {_}
