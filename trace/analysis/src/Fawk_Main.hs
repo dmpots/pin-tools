@@ -10,7 +10,6 @@ import System.IO
 import System.Environment
 import System.Exit
 import Text.Regex.Posix
---import Text.Regex.Posix.String
 import qualified Text.Regex.Posix.String as SR
 import Text.Regex.Posix.ByteString.Lazy
 
@@ -127,7 +126,7 @@ processField script f@(field, _col) = do
   mbRule <- findFirst script f
   case mbRule of
     Nothing -> return field
-    Just (r, groups) -> return $ subs groups (replacement r)
+    Just (r, groups) -> return $ substitute groups (replacement r)
 
 findFirst :: Script -> (ByteString, Int) -> IO (Maybe (Rule, [ByteString]))
 findFirst []     _ = return Nothing
@@ -143,20 +142,8 @@ spansColumn :: ColumnSpec -> Int -> Bool
 spansColumn Any _         = True
 spansColumn (Column cs) c = c `elem` cs
 
-substitute :: [String] -> String -> String
-substitute groups string = go string
-  where
-  go []                     = []
-  go ('$':c:cs) | isDigit c = groups `safeIndex` (digitToInt c - 1) ++ go cs
-  go ('$':'$':cs)           = '$' : go cs
-  go (c:cs)                 =  c  : go cs
-
-  safeIndex []     _   = ""
-  safeIndex (x:_)  0   = x
-  safeIndex (_:xs) !n  = safeIndex xs (n-1)
-
-subs :: [B.ByteString] -> B.ByteString -> B.ByteString
-subs groups rhs = B.concat (go rhs)
+substitute :: [B.ByteString] -> B.ByteString -> B.ByteString
+substitute groups rhs = B.concat (go rhs)
   where
   go str | B.null str = []
   go str = let (b,a) = B.break (=='$') str
