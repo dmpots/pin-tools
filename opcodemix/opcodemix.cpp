@@ -89,7 +89,7 @@ INT32 Usage()
 /* ===================================================================== */
 
 const UINT32 MAX_INDEX     = 4096;       // enough even for the IA-64 architecture
-const UINT32 MOV_OPCODE    =  299;
+UINT32 MOV_OPCODE; // find this dynamically
 const UINT32 SHIFTED_OPCODE_START =  299 + 4;
 const UINT32 INDEX_MOV     =  2000;
 const UINT32 INDEX_MOV_MR  =  INDEX_MOV      + 0;
@@ -582,6 +582,21 @@ int main(int argc, CHAR *argv[])
         std::cerr << "pintool FAILED TO OPEN FILE '" 
                   << filename << "'" << std::endl;
         exit(1);
+    }
+
+    // find the MOV opcode
+    bool foundMov = false;
+    for(UINT32 i = 0; i < INDEX_MOV; i++) {
+      //cout << OPCODE_StringShort(i) << "\n";
+      if(OPCODE_StringShort(i) == "MOV") {
+        MOV_OPCODE = i;
+        foundMov = true;
+        break;
+      }
+    }
+    if(!foundMov){
+      cout << "pintool FAILED TO FIND MOV OPCODE\n";
+      PIN_ExitProcess(1);
     }
 
     InitLock(&lock);    
