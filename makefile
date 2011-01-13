@@ -1,7 +1,14 @@
 
+SUBDIRS = trace opcodemix jumpmix regmix
+.PHONY: all $(SUBDIRS)
 
-all:
-	$(MAKE) -C trace
+all: $(SUBDIRS)
+
+$(SUBDIRS):
+	$(MAKE) -C $@
 
 clean:
-	$(MAKE) -C trace clean
+	for dir in $(SUBDIRS); do \
+               $(MAKE) -C $$dir clean; \
+  done
+
