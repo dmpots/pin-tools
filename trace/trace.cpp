@@ -144,7 +144,25 @@ class TraceLog
 
 TraceLog::TraceLog(THREADID tid)
 {
-    string filename = KnobOutputFile.Value() + "." + decstr(tid);
+    string filename = KnobOutputFile.Value();
+    string tidStr    = decstr(tid);
+    size_t len = filename.length();
+
+    // Special case for files that end in ".LOG".
+    // For these files we change the filename to end in ".tid.LOG".
+    // We do this to make it easy for the other scripts we wrote to gather
+    // all the log files.
+    if(len >= 4 && filename[len-4] == '.'
+                && filename[len-3] == 'L'
+                && filename[len-2] == 'O'
+                && filename[len-1] == 'G')
+    {
+      filename.insert(len-4, "." + tidStr);
+    }
+    else
+    {
+      filename.append(tidStr);
+    }
 
     _ofile.open(filename.c_str());
 
