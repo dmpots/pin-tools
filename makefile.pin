@@ -1,50 +1,80 @@
 ##############################################################
 #
-# Here are some things you might want to configure
+# User-specific configuration
 #
 ##############################################################
 
+#
+# 1. Change PIN_HOME to point to the top-level directory where
+#    Pin was installed. This can also be set on the command line,
+#    or as an environment variable.
+#
+PIN_HOME ?= $(HOME)/pin
 TARGET_COMPILER?=gnu
 
 ##############################################################
 #
-# include *.config files
+# set up and include *.config files
 #
 ##############################################################
 
-ifeq ($(TARGET_COMPILER),gnu)
-    include $(TOP)/makefile.gnu.config
-    CXXFLAGS ?= -I$(PIN_HOME)/InstLib -fomit-frame-pointer -Wall -Werror -Wno-unknown-pragmas $(DBG) $(OPT) -MMD
+PIN_KIT=$(PIN_HOME)
+KIT=1
+TESTAPP=$(OBJDIR)cp-pin.exe
+
+TARGET_COMPILER?=gnu
+ifdef OS
+    ifeq (${OS},Windows_NT)
+        TARGET_COMPILER=ms
+    endif
 endif
 
+ifeq ($(TARGET_COMPILER),gnu)
+    include $(PIN_HOME)/source/tools/makefile.gnu.config
+    CXXFLAGS ?= -I$(PIN_HOME)/source/tools/InstLib -Wall -Werror -Wno-unknown-pragmas $(DBG) $(OPT)
+    PIN=$(PIN_HOME)/pin
+endif
+
+ifeq ($(TARGET_COMPILER),ms)
+    include $(PIN_HOME)/source/tools/makefile.ms.config
+    DBG?=
+    PIN=$(PIN_HOME)/pin.bat
+endif
+
+
 ##############################################################
 #
-# Tools sets
+# Tools - you may wish to add your tool name to TOOL_ROOTS
 #
 ##############################################################
 
-TOOL_ROOTS = trace
+
+TOOL_ROOTS = MyPinTool
 
 TOOLS = $(TOOL_ROOTS:%=$(OBJDIR)%$(PINTOOL_SUFFIX))
 
+
+##############################################################
+#
+# build rules
+#
+##############################################################
+
 all: tools
 tools: $(OBJDIR) $(TOOLS)
-
-## build rules
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
 $(OBJDIR)%.o : %.cpp
-	${CXX} ${COPT} $(CXXFLAGS) ${PIN_CXXFLAGS} ${OUTOPT}$@ $< 
+	$(CXX) -c $(CXXFLAGS) $(PIN_CXXFLAGS) ${OUTOPT}$@ $<
 
 $(TOOLS): $(PIN_LIBNAMES)
-$(TOOLS): $(OBJDIR)%$(PINTOOL_SUFFIX) : $(OBJDIR)%.o
-	${PIN_LD} ${PIN_LDFLAGS} $(LINK_DEBUG) ${LINK_OUT}$@ $< ${PIN_LPATHS} ${PIN_LIBS} $(DBG)
+
+$(TOOLS): %$(PINTOOL_SUFFIX) : %.o
+	${PIN_LD} $(PIN_LDFLAGS) $(LINK_DEBUG) ${LINK_OUT}$@ $< ${PIN_LPATHS} $(PIN_LIBS) $(DBG)
+
 
 ## cleaning
 clean:
-	-rm -rf $(OBJDIR) *.out *.tested *.failed *.d *makefile.copy *.exp *.lib
-
--include *.d
-
+	-rm -rf $(OBJDIR) *.out *.tested *.failed makefile.copy
