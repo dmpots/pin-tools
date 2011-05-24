@@ -204,7 +204,7 @@ void JumpLog::DumpHistograms() {
             "# number of distinct targets occurs.\n"
             "# Output format:\n"
             "#\n"
-            "# dynamic_targets occurences" "\n"
+            "# dynamic_targets occurrences" "\n"
             "#\n";
 
   Histogram hist;
