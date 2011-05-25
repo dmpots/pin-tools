@@ -32,7 +32,7 @@ END_LEGAL */
 /* ===================================================================== */
 /*
   @ORIGINAL_AUTHOR: Robert Muth
-  @AUTOR: David Peixottor
+  @AUTOR: David Peixotto
 */
 
 #include "pin.H"
@@ -49,6 +49,9 @@ END_LEGAL */
 
 KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
     "o", "ibmix.out", "specify output file name");
+
+KNOB<BOOL> KnobDisableWeightedHist(KNOB_MODE_WRITEONCE, "pintool",
+    "w", "0", "disable weightng histogram by branch hits");
 
 /* ===================================================================== */
 /* Print Help Message                                                    */
@@ -110,6 +113,18 @@ struct JumpEntry {
 }
 JumpEntry;
 
+struct JumpRecord {
+  UINT64       hits;
+  set<ADDRINT> targets;
+
+  JumpRecord() : hits(0), targets() { }
+
+  void insert(ADDRINT target) {
+    targets.insert(target);
+    hits++;
+  }
+};
+
 /* ===================================================================== */
 /* JumpLog Class */
 /* ===================================================================== */
@@ -120,7 +135,7 @@ class JumpLog
     ~JumpLog();
 
     // Map: Source -> {Target}
-    typedef map<ADDRINT, set<ADDRINT> > JumpMap;
+    typedef map<ADDRINT, JumpRecord > JumpMap;
     // Map: Taken Count -> Occurances
     typedef map<UINT64, UINT64 > Histogram;
     
@@ -236,10 +251,15 @@ void JumpLog::DumpHistogram(const string& name, Histogram& hist) {
 }
 
 void JumpLog::Hist(JumpMap& jumps, Histogram& hist) {
+  bool weighted = !KnobDisableWeightedHist.Value();
   JumpMap::iterator it;
   JumpMap::iterator end = jumps.end();
   for(it = jumps.begin() ; it != end; ++it) {
-    hist[it->second.size()]++;
+    UINT64 inc = 1;
+    if(weighted) {
+      inc = it->second.hits;
+    }
+    hist[it->second.targets.size()] += inc;
   }
 }
 
