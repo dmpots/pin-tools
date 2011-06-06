@@ -124,6 +124,10 @@ struct JumpRecord {
     targets.insert(target);
     hits++;
   }
+
+  private:
+  JumpRecord(const JumpRecord&);
+  JumpRecord& operator=(const JumpRecord&);
 };
 
 /* ===================================================================== */
@@ -136,15 +140,17 @@ class JumpLog
     ~JumpLog();
 
     // Map: Source -> {Target}
-    typedef map<ADDRINT, JumpRecord > JumpMap;
+    typedef map<ADDRINT, JumpRecord* > JumpMap;
     // Map: Taken Count -> Occurances
     typedef map<UINT64, UINT64 > Histogram;
     
     void ConsolidateEntries(JumpEntry* traces,
                             UINT64     numElements,
                             THREADID tid );
+    void inline InsertEntry(JumpMap& map, ADDRINT src, ADDRINT dest);
     void DumpHistograms();
-    void DumpHistogram(const string& name, Histogram& hist);
+    void DumpHistogram(const string& name, Histogram& hist, bool weighted);
+    void Hist(JumpMap& jumps, Histogram& hist, bool weighted);
 
 
   private:
@@ -152,8 +158,6 @@ class JumpLog
     JumpMap jumpmap;
     JumpMap callmap;
     JumpMap retnmap;
-
-    void Hist(JumpMap& jumps, Histogram& hist);
 };
 
 JumpLog::JumpLog(THREADID tid)
@@ -201,13 +205,27 @@ VOID JumpLog::ConsolidateEntries(
     for(UINT64 i=0; i<numElements; i++, entries++)
     {
       switch(entries->arrivedBy) {
-        case ICALL: callmap[entries->source].insert(entries->dest);
-        case IJUMP: jumpmap[entries->source].insert(entries->dest);
-        case RET:   retnmap[entries->source].insert(entries->dest);
+        case ICALL: InsertEntry(callmap, entries->source, entries->dest);
+        case IJUMP: InsertEntry(jumpmap, entries->source, entries->dest);
+        case RET:   InsertEntry(retnmap, entries->source, entries->dest);
         case INVALID:;
       }
     }
 }
+
+VOID inline JumpLog::InsertEntry(JumpMap& map, ADDRINT src, ADDRINT dest)
+{
+  JumpMap::iterator it = map.find(src);
+  if (it == map.end()) {
+    JumpRecord *record = new JumpRecord();
+    record->insert(dest);
+    map.insert(pair<ADDRINT, JumpRecord*>(src, record));
+  }
+  else {
+    it->second->insert(dest);
+  }
+}
+
 /* */
 void JumpLog::DumpHistograms() {
   string sep = " ";
@@ -224,21 +242,28 @@ void JumpLog::DumpHistograms() {
             "#\n";
 
   Histogram hist;
-  Hist(jumpmap, hist);
-  DumpHistogram(string("jumps"), hist);
-  
-  hist.clear();
-  Hist(callmap, hist);
-  DumpHistogram(string("calls"), hist);
+  for(int weighted = 0; weighted <= 1; weighted++) {
+    Hist(jumpmap, hist, weighted);
+    DumpHistogram(string("jumps"), hist, weighted);
+    
+    hist.clear();
+    Hist(callmap, hist, weighted);
+    DumpHistogram(string("calls"), hist, weighted);
 
-  hist.clear();
-  Hist(retnmap, hist);
-  DumpHistogram(string("returns"), hist);
+    hist.clear();
+    Hist(retnmap, hist, weighted);
+    DumpHistogram(string("returns"), hist, weighted);
+    if (!weighted) { 
+      _ofile << "------------------------------------------------------------\n"; 
+    }
+  }
 
 }
 
-void JumpLog::DumpHistogram(const string& name, Histogram& hist) {
-  _ofile << "@" << name << "\n";
+void JumpLog::DumpHistogram(const string& name, Histogram& hist, bool weighted) {
+  _ofile << "@" << name;
+  if (weighted) {_ofile << "-weighted";}
+  _ofile << "\n";
   
   Histogram::iterator it;
   Histogram::iterator end = hist.end();
@@ -251,16 +276,16 @@ void JumpLog::DumpHistogram(const string& name, Histogram& hist) {
   }
 }
 
-void JumpLog::Hist(JumpMap& jumps, Histogram& hist) {
-  bool weighted = !KnobDisableWeightedHist.Value();
+void JumpLog::Hist(JumpMap& jumps, Histogram& hist, bool weighted) {
+  //bool weighted = !KnobDisableWeightedHist.Value();
   JumpMap::iterator it;
   JumpMap::iterator end = jumps.end();
   for(it = jumps.begin() ; it != end; ++it) {
     UINT64 inc = 1;
     if(weighted) {
-      inc = it->second.hits;
+      inc = it->second->hits;
     }
-    hist[it->second.targets.size()] += inc;
+    hist[it->second->targets.size()] += inc;
   }
 }
 
