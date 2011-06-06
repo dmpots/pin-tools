@@ -44,6 +44,10 @@ END_LEGAL */
 #include <map>
 #include <stddef.h>
 
+#include <boost/tr1/unordered_map.hpp>
+#include <boost/tr1/unordered_set.hpp>
+using namespace std::tr1;
+
 /* ===================================================================== */
 /* Commandline Switches */
 /* ===================================================================== */
@@ -116,7 +120,7 @@ JumpEntry;
 
 struct JumpRecord {
   UINT64       hits;
-  set<ADDRINT> targets;
+  unordered_set<ADDRINT> targets;
 
   JumpRecord() : hits(0), targets() { }
 
@@ -140,9 +144,9 @@ class JumpLog
     ~JumpLog();
 
     // Map: Source -> {Target}
-    typedef map<ADDRINT, JumpRecord* > JumpMap;
+    typedef unordered_map<ADDRINT, JumpRecord* > JumpMap;
     // Map: Taken Count -> Occurances
-    typedef map<UINT64, UINT64 > Histogram;
+    typedef unordered_map<UINT64, UINT64 > Histogram;
     
     void ConsolidateEntries(JumpEntry* traces,
                             UINT64     numElements,
