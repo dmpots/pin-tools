@@ -42,6 +42,7 @@ END_LEGAL */
 #include <sstream>
 #include <set>
 #include <map>
+#include <stddef.h>
 
 /* ===================================================================== */
 /* Commandline Switches */
