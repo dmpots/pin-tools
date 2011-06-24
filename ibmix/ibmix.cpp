@@ -146,7 +146,7 @@ class JumpLog
     // Map: Source -> {Target}
     typedef unordered_map<ADDRINT, JumpRecord* > JumpMap;
     // Map: Taken Count -> Occurances
-    typedef unordered_map<UINT64, UINT64 > Histogram;
+    typedef map<UINT64, UINT64 > Histogram;
     
     void ConsolidateEntries(JumpEntry* traces,
                             UINT64     numElements,
@@ -264,9 +264,6 @@ void JumpLog::DumpHistograms() {
     hist.clear();
     Hist(retnmap, hist, weighted);
     DumpHistogram(string("returns"), hist, weighted);
-    if (!weighted) { 
-      _ofile << "------------------------------------------------------------\n"; 
-    }
   }
 
 }
