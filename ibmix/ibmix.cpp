@@ -209,9 +209,15 @@ VOID JumpLog::ConsolidateEntries(
     for(UINT64 i=0; i<numElements; i++, entries++)
     {
       switch(entries->arrivedBy) {
-        case ICALL: InsertEntry(callmap, entries->source, entries->dest);
-        case IJUMP: InsertEntry(jumpmap, entries->source, entries->dest);
-        case RET:   InsertEntry(retnmap, entries->source, entries->dest);
+        case ICALL:
+          InsertEntry(callmap, entries->source, entries->dest);
+          break;
+        case IJUMP:
+          InsertEntry(jumpmap, entries->source, entries->dest);
+          break;
+        case RET:
+          InsertEntry(retnmap, entries->source, entries->dest);
+          break;
         case INVALID:;
       }
     }
@@ -247,6 +253,7 @@ void JumpLog::DumpHistograms() {
 
   Histogram hist;
   for(int weighted = 0; weighted <= 1; weighted++) {
+    hist.clear();
     Hist(jumpmap, hist, weighted);
     DumpHistogram(string("jumps"), hist, weighted);
     
