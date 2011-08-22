@@ -146,8 +146,13 @@ struct JumpRecord {
 class HistRecord {
   public:
   typedef set<ADDRINT> AddrSet;
+  struct MaxHit {
+    UINT64  hits;
+    ADDRINT source;
+    MaxHit() : hits(0), source(0){};
+  };
 
-  HistRecord() : hits_(0), misses_(0), sources_(), targets_() { }
+  HistRecord() : hits_(0), misses_(0), sources_(), targets_(), max_() { }
 
 
   void Update(ADDRINT source, 
@@ -158,14 +163,20 @@ class HistRecord {
     targets_.insert(targets.begin(), targets.end());
     hits_   += hits;
     misses_ += misses;
+
+    if (hits > max_.hits) {
+      max_.hits   = hits;
+      max_.source = source;
+    }
   }
   
   double MissRatio() {
     return static_cast<double>(misses_) / static_cast<double>(hits_);
   }
 
-  UINT64 hits()  {return hits_;}
+  UINT64 hits()   {return hits_;}
   UINT64 misses() {return misses_;}
+  const MaxHit&  max()     {return max_;}
   const AddrSet& sources() {return sources_;}
   const AddrSet& targets() {return targets_;}
 
@@ -174,6 +185,7 @@ class HistRecord {
   UINT64  misses_;
   AddrSet sources_;
   AddrSet targets_;
+  MaxHit  max_;
 
   HistRecord(const HistRecord&);
   HistRecord& operator=(const HistRecord&);
@@ -198,8 +210,8 @@ class JumpLog
                             THREADID tid );
     void inline InsertEntry(JumpMap& map, ADDRINT src, ADDRINT dest);
     void DumpHistograms();
-    void DumpHistogram(const string& name, const Histogram& hist, bool weighted);
-    void Hist(const JumpMap& jumps, Histogram* hist, bool weighted);
+    void DumpHistogram(const string& name, const Histogram& hist);
+    void Hist(const JumpMap& jumps, Histogram* hist);
     void ClearHist(Histogram*);
 
 
@@ -292,51 +304,101 @@ void JumpLog::DumpHistograms() {
             "#    return       \n"
             "# Output is a histogram counting how many times that\n"
             "# number of distinct targets occurs.\n"
-            "# Output format:\n"
+            "#\n";
+  _ofile << "# =================    Params     =================\n"
+         << "# Cutoff:    " << KnobCutoff.Value() << "\n"
+         << "# CacheSize: " << KnobLocalitySize.Value()  << "\n";
+  _ofile << "# ================= Output format =================\n"
             "#\n"
-            "# dynamic_targets occurrences" "\n"
+            "# num-targets num-sources dynamic-hits"
+            "  %static %dynamic %hit-rate(1-misses/hits) %max"
+            "  max-hits num-misses max-hit-addr"
+            "  source-addrs target-addrs" "\n"
             "#\n";
 
   Histogram hist;
-  for(int weighted = 0; weighted <= 1; weighted++) {
-    ClearHist(&hist);
-    Hist(jumpmap, &hist, weighted);
-    DumpHistogram(string("jumps"), hist, weighted);
-    
-    ClearHist(&hist);
-    Hist(callmap, &hist, weighted);
-    DumpHistogram(string("calls"), hist, weighted);
+  ClearHist(&hist);
+  Hist(jumpmap, &hist);
+  DumpHistogram(string("jumps"), hist);
 
-    ClearHist(&hist);
-    Hist(retnmap, &hist, weighted);
-    DumpHistogram(string("returns"), hist, weighted);
-  }
+  ClearHist(&hist);
+  Hist(callmap, &hist);
+  DumpHistogram(string("calls"), hist);
+
+  ClearHist(&hist);
+  Hist(retnmap, &hist);
+  DumpHistogram(string("returns"), hist);
 
 }
 
-void JumpLog::DumpHistogram(const string& name, const Histogram& hist, bool weighted) {
+void JumpLog::DumpHistogram(const string& name, const Histogram& hist){
   _ofile << "@" << name;
-  if (weighted) {_ofile << "-weighted";}
   _ofile << "\n";
-  
+  _ofile << setiosflags(ios::left);
 
-  // Copy to a sorted map for pretty output
   Histogram::const_iterator hit;
   Histogram::const_iterator end = hist.end();
 
+  // First compute some totals
+  UINT64 total_sources = 0;
+  UINT64 total_hits    = 0;
   for(hit = hist.begin(); hit != end; ++hit) {
-    UINT64 num_targets = hit->first;
-    HistRecord *hr = hit->second;
+    total_sources += hit->second->sources().size();
+    total_hits    += hit->second->hits();
+  }
 
-    _ofile << setw(5) << setiosflags(ios::left)
+  for(hit = hist.begin(); hit != end; ++hit) {
+    HistRecord *hr = hit->second;
+    UINT64 num_targets  = hit->first;
+    UINT64 num_sources  = hr->sources().size();
+    UINT64 dynamic_hits = hr->hits();
+    double static_percent =
+      static_cast<double>(num_sources) / static_cast<double>(total_sources);
+    double dynamic_percent =
+      static_cast<double>(dynamic_hits) / static_cast<double>(total_hits);
+    UINT64 num_misses = hr->misses();
+    double hit_ratio = 1.0 - hr->MissRatio();
+    UINT64 max_hits = hr->max().hits;
+    UINT64 max_addr = hr->max().source;
+    double max_percent =
+      static_cast<double>(max_hits) / static_cast<double>(dynamic_hits);
+
+    _ofile << setw(5)
            << num_targets
            << "|"
-           << setw(20)
-           << hr->hits();
-
-    _ofile << "|"
-           << hr->MissRatio();
-
+           << setw(5)
+           << num_sources
+           << "|"
+           << setw(12)
+           << dynamic_hits
+           << "|"
+           << fixed
+           << setprecision(5)
+           << static_percent
+           << "|"
+           << fixed
+           << setprecision(5)
+           << dynamic_percent
+           << "|"
+           << fixed
+           << setprecision(5)
+           << hit_ratio
+           << "|"
+           << fixed
+           << setprecision(5)
+           << max_percent
+           << "|"
+           << setw(12)
+           << max_hits
+           << "|"
+           << setw(12)
+           << num_misses
+           << "|"
+           << "0x"
+           << setw(12)
+           << hex
+           << max_addr
+           << dec;
 
     _ofile << "|";
     if(num_targets >= KnobCutoff.Value()) {
@@ -362,18 +424,15 @@ void JumpLog::DumpHistogram(const string& name, const Histogram& hist, bool weig
   }
 }
 
-void JumpLog::Hist(const JumpMap& jumps, Histogram* hist, bool weighted) {
+void JumpLog::Hist(const JumpMap& jumps, Histogram* hist) {
   JumpMap::const_iterator it;
   JumpMap::const_iterator end = jumps.end();
   for(it = jumps.begin() ; it != end; ++it) {
-    ADDRINT target     = it->first;
+    ADDRINT source     = it->first;
     JumpRecord *jr     = it->second;
     UINT64 num_targets = jr->targets.size();
     
-    UINT64 hits = 1;
-    if(weighted) {
-      hits = jr->hits;
-    }
+    UINT64 hits = jr->hits;
 
     // insert new entry if needed
     Histogram::iterator hit = hist->find(num_targets);
@@ -387,7 +446,7 @@ void JumpLog::Hist(const JumpMap& jumps, Histogram* hist, bool weighted) {
     }
 
     // update entry
-    entry->Update(target, jr->targets, hits, jr->misses);
+    entry->Update(source, jr->targets, hits, jr->misses);
   }
 }
 
