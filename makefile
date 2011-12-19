@@ -1,5 +1,5 @@
 
-SUBDIRS = opcodemix jumpmix regmix bblengthmix trace ibmix
+SUBDIRS = opcodemix jumpmix regmix bblengthmix trace ibmix imgmix
 .PHONY: all $(SUBDIRS)
 
 all: $(SUBDIRS)
