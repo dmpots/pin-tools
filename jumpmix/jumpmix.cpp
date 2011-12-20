@@ -42,6 +42,7 @@ END_LEGAL */
 
 #include "pin.H"
 #include "portability.H"
+#include "../imgfilt/ImgFilt.h"
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -114,6 +115,8 @@ INC(_return)
 
 VOID Instruction(INS ins, void *v)
 {
+    if(!hobbes::ShouldInstrumentInstruction(ins)) return;
+
     if( INS_IsRet(ins) )
     {
         INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR) inc_return, IARG_BRANCH_TAKEN,  IARG_END);
@@ -193,7 +196,6 @@ int main(int argc, char *argv[])
     INS_AddInstrumentFunction(Instruction, 0);
     PIN_AddFiniFunction(Fini, 0);
 
-    // Never returns
 
     PIN_StartProgram();
     
