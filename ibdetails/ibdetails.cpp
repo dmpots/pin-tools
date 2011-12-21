@@ -359,7 +359,6 @@ void JumpLog::DumpHistogram(const string& name, const Histogram& hist){
     UINT64 num_misses = hr->misses();
     double hit_ratio = 1.0 - hr->MissRatio();
     UINT64 max_hits = hr->max().hits;
-    UINT64 max_addr = hr->max().source;
     double max_percent =
       static_cast<double>(max_hits) / static_cast<double>(dynamic_hits);
 
@@ -393,15 +392,10 @@ void JumpLog::DumpHistogram(const string& name, const Histogram& hist){
            << "|"
            << setw(12)
            << num_misses
-           << "|"
-           << "0x"
-           << setw(12)
-           << hex
-           << max_addr
            << dec;
 
-    _ofile << "|";
     if(num_targets >= KnobCutoff.Value()) {
+      _ofile << "|";
         HistRecord::AddrSet::iterator sit = hr->sources().begin();
         HistRecord::AddrSet::iterator sit_end = hr->sources().end();
         for(; sit != sit_end; ++sit) {
@@ -410,8 +404,8 @@ void JumpLog::DumpHistogram(const string& name, const Histogram& hist){
         _ofile << dec;
     }
 
-    _ofile << "|";
     if(num_targets >= KnobCutoff.Value()) {
+      _ofile << "|";
         HistRecord::AddrSet::iterator sit = hr->targets().begin();
         HistRecord::AddrSet::iterator sit_end = hr->targets().end();
         for(; sit != sit_end; ++sit) {
