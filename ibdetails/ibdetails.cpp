@@ -36,6 +36,7 @@ END_LEGAL */
 */
 
 #include "pin.H"
+#include "../imgfilt/ImgFilt.h"
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
@@ -500,6 +501,7 @@ VOID ThreadFini(THREADID tid, const CONTEXT *ctxt, INT32 code, VOID *v)
 // This routine is executed every time a trace is created
 VOID Trace(TRACE trace, VOID *v)
 {
+    if(!hobbes::ShouldInstrumentTrace(trace)) return;
     for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl))
     {
         INS ins = BBL_InsTail(bbl);
