@@ -39,6 +39,7 @@ END_LEGAL */
  */
 
 #include "pin.H"
+#include "../imgfilt/ImgFilt.h"
 #include "instlib.H"
 #include "portability.H"
 #include <vector>
@@ -361,6 +362,7 @@ VOID PIN_FAST_ANALYSIS_CALL docount(COUNTER * counter, THREADID tid)
 
 VOID Trace(TRACE trace, VOID *v)
 {
+    if(!hobbes::ShouldInstrumentTrace(trace)) return;
     if ( KnobNoSharedLibs.Value() ) {
         if(                  (RTN_Valid(TRACE_Rtn(trace))) && 
                     (SEC_Valid(RTN_Sec(TRACE_Rtn(trace)))) && 
@@ -521,6 +523,8 @@ VOID Fini(int, VOID * v)
 
 VOID Image(IMG img, VOID * v)
 {
+    if(!hobbes::ShouldInstrumentImage(img)) return;
+
     for (SEC sec = IMG_SecHead(img); SEC_Valid(sec); sec = SEC_Next(sec))
     {
         for (RTN rtn = SEC_RtnHead(sec); RTN_Valid(rtn); rtn = RTN_Next(rtn))
