@@ -35,6 +35,7 @@ END_LEGAL */
 
 
 #include "pin.H"
+#include "../imgfilt/ImgFilt.h"
 #include <list>
 #include <iostream>
 #include <cassert>
@@ -187,6 +188,8 @@ INT32 RecordLength(BBL bbl,
 
 VOID Trace(TRACE trace, VOID *v)
 {
+  if(!hobbes::ShouldInstrumentTrace(trace)) return;
+  /*
     const RTN rtn = TRACE_Rtn(trace);
     
     if (! RTN_Valid(rtn))
@@ -214,6 +217,7 @@ VOID Trace(TRACE trace, VOID *v)
           }
         }
     }
+  */
     
     for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl))
     {
